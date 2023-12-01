@@ -1,69 +1,71 @@
 import { Component } from "react";
-import { nanoid } from "nanoid";
-import { ContactForm } from "./ContactForm/ContactForm";
-import { ContactList } from "./ContactList/ContactList";
-import { Filter } from "./Filter/Filter";
+import axios from "axios";
+import Notiflix from "notiflix";
+import { Searchbar } from "./Searchbar/Searchbar";
+import { ImageGallery } from "./ImageGallery/ImageGallery";
+import { AppDiv } from "./App.styled";
 
+const storageKey = { page: 1, pictures: [], status: "pending" };
 
 export class App extends Component {
 
   state = {
-    contacts: [
-      { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
-      { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
-      { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
-      { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
-    ],
-    filter: "",
+    searchInput: "",
+    pictures: [],
+    page: 1,
+    status: '',
+    totalHits: '',
   }
 
-  addContact = newContact => {
-    const newMember = {
-      ...newContact, id: nanoid(),
-    };
 
-    if (this.state.contacts.find(contact => contact.name.toLowerCase() === newMember.name.toLowerCase())) {
-      alert(`${newMember.name} is already in the contacts`);
-      return;
+  onSubmit = searchInputValue => {
+    this.setState({ searchInput: searchInputValue })
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.searchInput !== this.state.searchInput) {
+      this.setState({ page: 1, pictures: [], status: "pending" });
+      this.fetchData();
     }
-    
-    this.setState(prevState => ({
-      contacts: [newMember, ...prevState.contacts],
-      
-    }))
-  }
-    
-  deleteContact = (contactId) => {
-    this.setState(prevState => ({
-      contacts: prevState.contacts.filter(contact => contact.id !== contactId)
-    }))
-     
-  }
-  
-  filterChange = ({ input }) => {
-    this.setState({ filter: input });
+    if (prevState.page !== this.state.page) {
+      this.fetchData();
+    }
   }
 
-  deleteFilter = () => {
-    this.setState({ filter:"" });
+  fetchData = () => {
+    const BASE_URL = 'https://pixabay.com/api/';
+    const KEY = "39910400-b99b72c510d89a4d4c1fb5edf";
+
+    axios.get(`${BASE_URL}`, {
+      params: {
+        key: KEY,
+        q: this.state.searchInput,
+        image_type: 'photo',
+        orientation: 'horizontal',
+        safesearch: 'true',
+        per_page: 12,
+        page: this.state.page,
+      },
+    }).then(result => {
+      this.setState({ pictures: [...this.state.pictures, ...result.data.hits], status: 'ready', totalHits: result.data.totalHits })
+    }).catch(error => {
+      Notiflix.Notify.failure('Something went wrong. Try reloading the page.');
+      this.setState({ status: "" })
+    });
+  }
+
+  loadMore = () => {
+    let newPage = this.state.page + 1;
+    this.setState({ page: newPage, status: "loading more" });
   }
 
   render() {
-        const { contacts, filter } = this.state;
-    
-    const filteredContacts = contacts.filter(contact =>
-      contact.name.toLowerCase().includes(filter.toLowerCase())
-    );
-      return (
-<div>
-  <h1>Phonebook</h1>
-          <ContactForm onAdd={this.addContact} />
-
-  <h2>Contacts</h2>
-          <Filter onFilter={this.filterChange} resetFilter={this.deleteFilter} />
-  <ContactList contacts={filteredContacts} onDeleteContact={this.deleteContact}  />
-</div>
-  );
+    return (
+      <AppDiv>
+      <Searchbar onSubmit = {this.onSubmit} />
+        <ImageGallery searchInput={this.state.searchInput} status={this.state.status} pictures={this.state.pictures}
+          totalHits={this.state.totalHits} page={this.state.page} loadMore = {this.loadMore} />
+      </AppDiv>
+        )
   }
-
-};
+}
