@@ -24,7 +24,7 @@ export class App extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     if (prevState.searchInput !== this.state.searchInput) {
-      this.setState({ page: 1, pictures: [], status: "pending" });
+      this.setState(storageKey);
       this.fetchData();
     }
     if (prevState.page !== this.state.page) {
